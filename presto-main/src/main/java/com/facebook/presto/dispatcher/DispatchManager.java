@@ -167,6 +167,7 @@ public class DispatchManager
     }
 
     /**
+     * 请求会进到这里执行
      *  Creates and registers a dispatch query with the query tracker.  This method will never fail to register a query with the query
      *  tracker.  If an error occurs while, creating a dispatch query a failed dispatch will be created and registered.
      */
@@ -181,16 +182,19 @@ public class DispatchManager
                 throw new PrestoException(QUERY_TEXT_TOO_LARGE, format("Query text length (%s) exceeds the maximum length (%s)", queryLength, maxQueryLength));
             }
 
-            // decode session
+            // decode session // 第一步：获取Query对应的Session
             session = sessionSupplier.createSession(queryId, sessionContext);
 
-            // prepare query
+            // prepare query // 第二步：检查是否有权限执行Query
             WarningCollector warningCollector = warningCollectorFactory.create(getWarningHandlingLevel(session));
+
+            // 第三步（对应SQL执行流程第二步，后面小节详细介绍）：PreparedQuery负责调用SqlParser完成SQL的解析，生成抽象语法树（AST）
             preparedQuery = queryPreparer.prepareQuery(session, query, warningCollector);
             query = preparedQuery.getFormattedQuery().orElse(query);
 
             // select resource group
             Optional<QueryType> queryType = getQueryType(preparedQuery.getStatement().getClass());
+            // 第四步：选择Query执行对应的ResourceGroup
             SelectionContext<C> selectionContext = resourceGroupManager.selectGroup(new SelectionCriteria(
                     sessionContext.getIdentity().getPrincipal().isPresent(),
                     sessionContext.getIdentity().getUser(),
@@ -205,6 +209,7 @@ public class DispatchManager
             // mark existing transaction as active
             transactionManager.activateTransaction(session, isTransactionControlStatement(preparedQuery.getStatement()), accessControl);
 
+            // 第五步：生成DispatchQuery 也就是第三步：【Coordinator】创建QueryExecution并提交给ResourceGroupManager运行
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,
                     query,
@@ -215,7 +220,8 @@ public class DispatchManager
                     queryType,
                     warningCollector,
                     (dq) -> resourceGroupManager.submit(preparedQuery.getStatement(), dq, selectionContext, queryExecutor));
-
+            
+            // 第六步：向ResourceGroupManager提交Query执行
             boolean queryAdded = queryCreated(dispatchQuery);
             if (queryAdded && !dispatchQuery.isDone()) {
                 try {

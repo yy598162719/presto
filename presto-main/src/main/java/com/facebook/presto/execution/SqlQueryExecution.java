@@ -363,11 +363,13 @@ public class SqlQueryExecution
                 }
 
                 // analyze query
+                // sql分析与执行计划分析 重点方法
                 PlanRoot plan = analyzeQuery();
 
                 metadata.beginQuery(getSession(), plan.getConnectors());
 
                 // plan distribution of query
+                // 生成数据源Connector的Connector，创建SqlStageExecution（Stage）、指定StageScheduler
                 planDistribution(plan);
 
                 // transition to starting
@@ -378,7 +380,7 @@ public class SqlQueryExecution
 
                 // if query is not finished, start the scheduler, otherwise cancel it
                 SqlQuerySchedulerInterface scheduler = queryScheduler.get();
-
+                // Stage的调度，根据执行计划，将Task调度到Presto Worker上
                 if (!stateMachine.isDone()) {
                     scheduler.start();
                 }
@@ -440,9 +442,18 @@ public class SqlQueryExecution
         stateMachine.beginAnalysis();
 
         // plan query
+        // 生成执行计划 第四步：【Coordinator】语义分析(Analysis)、生成执行计划LogicalPlan
+        /**
+         * 生成执行计划LogicalPlan：生成以PlanNode为节点的逻辑执行计划，它也是类似于AST那样的树形结构，树节点和根的类型都是PlanNode
+         * 。其实在Presto代码中，并没有任何一段代码将PlanNode树称之为逻辑执行计划（LogicalPlan），但是由于负责生成PlanNode树的类名称是LogicalPlanner
+         * ，所以我们也称之为逻辑执行计划（LogicalPlan），此PlanNode树的实际作用，也与其他SQL执行引擎的逻辑执行计划完全相同。
+         */
         LogicalPlanner logicalPlanner = new LogicalPlanner(false, stateMachine.getSession(), planOptimizers, idAllocator, metadata, sqlParser, statsCalculator, costCalculator, stateMachine.getWarningCollector(), planChecker);
         Plan plan = getSession().getRuntimeStats().profileNanos(
                 LOGICAL_PLANNER_TIME_NANOS,
+                // 第五步：【Coordinator】优化执行计划，生成Optimized Logical Plan
+                // 优化执行计划，生成Optimized Logical Plan：用预定义的几百个优化器迭代优化之前生成的PlanNode树
+                // ，并返回优化后的PlanNode树。后面小节再详细介绍。
                 () -> logicalPlanner.plan(analysis));
         queryPlan.set(plan);
 
@@ -459,6 +470,7 @@ public class SqlQueryExecution
         variableAllocator.set(new PlanVariableAllocator(plan.getTypes().allVariables()));
         SubPlan fragmentedPlan = getSession().getRuntimeStats().profileNanos(
                 FRAGMENT_PLAN_TIME_NANOS,
+                // 第六步：【Coordinator】为逻辑执行计划分段(Fragment)[也被称之为划分Stage]
                 () -> planFragmenter.createSubPlans(stateMachine.getSession(), plan, false, idAllocator, variableAllocator.get(), stateMachine.getWarningCollector()));
 
         // record analysis time

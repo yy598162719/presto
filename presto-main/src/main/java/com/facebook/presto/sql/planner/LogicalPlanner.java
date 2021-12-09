@@ -183,12 +183,15 @@ public class LogicalPlanner
 
     public Plan plan(Analysis analysis, Stage stage)
     {
+        // 第四步：【Coordinator】语义分析(Analysis)、生成执行计划LogicalPlan
         PlanNode root = planStatement(analysis, analysis.getStatement());
 
         planChecker.validateIntermediatePlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
+            // 用预定义的几百个优化器迭代优化之前生成的PlanNode树
             for (PlanOptimizer optimizer : planOptimizers) {
+                // 第五步：【Coordinator】优化执行计划，生成Optimized Logical Plan
                 root = optimizer.optimize(root, session, variableAllocator.getTypes(), variableAllocator, idAllocator, warningCollector);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }

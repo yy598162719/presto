@@ -19,7 +19,7 @@ import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.sql.planner.PlanVariableAllocator;
 import com.facebook.presto.sql.planner.TypeProvider;
-
+// 优化器需要实现的接口
 public interface PlanOptimizer
 {
     PlanNode optimize(PlanNode plan,

@@ -26,6 +26,7 @@ import static java.util.Objects.requireNonNull;
  * An IR is a tree structure with each PlanNode performing a specific operation.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS, property = "@type")
+// 优化器优化后返回的plannode
 public abstract class PlanNode
 {
     private final PlanNodeId id;

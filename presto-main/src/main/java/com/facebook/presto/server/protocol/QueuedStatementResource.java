@@ -100,6 +100,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Path("/")
 @RolesAllowed(USER)
+// 该类是接收post请求的sql类，入口类
 public class QueuedStatementResource
 {
     private static final Logger log = Logger.get(QueuedStatementResource.class);
@@ -168,6 +169,7 @@ public class QueuedStatementResource
     @POST
     @Path("/v1/statement")
     @Produces(APPLICATION_JSON)
+    // 只有首次进入这里，主要是封装到map后就返回，然后client将请求到DispatchManager::createQueryInternal()
     public Response postStatement(
             String statement,
             @HeaderParam(X_FORWARDED_PROTO) String xForwardedProto,
@@ -185,9 +187,11 @@ public class QueuedStatementResource
                 sqlParserOptions,
                 tracerProvider,
                 Optional.of(sessionPropertyManager));
+        //组装成Query
         Query query = new Query(statement, sessionContext, dispatchManager, queryResultsProvider, 0);
+        // 加入执行队列map（id，该次查询对象）
         queries.put(query.getQueryId(), query);
-
+        // 返回
         return withCompressionConfiguration(Response.ok(query.getInitialQueryResults(uriInfo, xForwardedProto)), compressionEnabled).build();
     }
 

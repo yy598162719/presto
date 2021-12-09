@@ -80,7 +80,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
-
+// 遍历SQL AST，将数据维护在该类中
 public class Analysis
 {
     @Nullable
