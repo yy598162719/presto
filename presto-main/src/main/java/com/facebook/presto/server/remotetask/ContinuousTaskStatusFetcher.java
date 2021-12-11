@@ -64,6 +64,10 @@ import static io.airlift.units.Duration.nanosSince;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 与之对应的重量型的感知类是ContinuousTaskStatusFetcher
+ * ContinuousTaskStatusFetcher只返回TaskStatus，非常的轻量，可以快速感知到task状态的改变。
+ */
 class ContinuousTaskStatusFetcher
         implements SimpleHttpResponseCallback<TaskStatus>
 {

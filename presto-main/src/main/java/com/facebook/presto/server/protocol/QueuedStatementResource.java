@@ -236,6 +236,7 @@ public class QueuedStatementResource
     @GET
     @Path("/v1/statement/queued/{queryId}/{token}")
     @Produces(APPLICATION_JSON)
+        // 首次查询之后，接着第二次进入此接口，每次查询token+1，保证顺序
     public void getStatus(
             @PathParam("queryId") QueryId queryId,
             @PathParam("token") long token,
@@ -249,6 +250,7 @@ public class QueuedStatementResource
 
         // wait for query to be dispatched, up to the wait timeout
         ListenableFuture<?> futureStateChange = addTimeout(
+                // 进入这里的线程
                 query.waitForDispatched(),
                 () -> null,
                 WAIT_ORDERING.min(MAX_WAIT_TIME, maxWait),
@@ -435,6 +437,7 @@ public class QueuedStatementResource
             // if query query submission has not finished, wait for it to finish
             synchronized (this) {
                 if (querySubmissionFuture == null) {
+                    // 下一步
                     querySubmissionFuture = dispatchManager.createQuery(queryId, slug, retryCount, sessionContext, query);
                 }
                 if (!querySubmissionFuture.isDone()) {

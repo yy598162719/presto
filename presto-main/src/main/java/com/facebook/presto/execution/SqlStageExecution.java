@@ -499,8 +499,10 @@ public final class SqlStageExecution
         checkArgument(!allTasks.contains(taskId), "A task with id %s already exists", taskId);
 
         ImmutableMultimap.Builder<PlanNodeId, Split> initialSplits = ImmutableMultimap.builder();
+         // 添加来自上游数据源Connector的Split
         initialSplits.putAll(sourceSplits);
 
+        // 添加来自上游Stage的Task的数据输出，注册为RemoteSplit
         sourceTasks.forEach((planNodeId, task) -> {
             TaskStatus status = task.getTaskStatus();
             if (status.getState() != TaskState.FINISHED) {
@@ -511,6 +513,7 @@ public final class SqlStageExecution
         OutputBuffers outputBuffers = this.outputBuffers.get();
         checkState(outputBuffers != null, "Initial output buffers must be set before a task can be scheduled");
 
+        // 创建HttpRemoteTask
         RemoteTask task = remoteTaskFactory.createRemoteTask(
                 session,
                 taskId,
@@ -523,8 +526,9 @@ public final class SqlStageExecution
                 tableWriteInfo);
 
         completeSources.forEach(task::noMoreSplits);
-
+        // 将刚创建的TaskId添加到当前Stage的TaskId列表中
         allTasks.add(taskId);
+        // 将刚创建的Task添加到当前Stage的节点与Task映射的map中
         tasks.computeIfAbsent(node, key -> newConcurrentHashSet()).add(task);
         nodeTaskMap.addTask(node, task);
 
@@ -532,6 +536,8 @@ public final class SqlStageExecution
         task.addFinalTaskInfoListener(this::updateFinalTaskInfo);
 
         if (!stateMachine.getState().isDone()) {
+            // 向Presto Worker发请求，把刚创建的Task调度起来，开始执行
+            // 对应的还有FixedCountScheduler
             task.start();
         }
         else {

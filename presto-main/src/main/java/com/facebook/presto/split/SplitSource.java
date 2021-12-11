@@ -31,7 +31,7 @@ public interface SplitSource
     ConnectorId getConnectorId();
 
     ConnectorTransactionHandle getTransactionHandle();
-
+    // 获取下一批次
     ListenableFuture<SplitBatch> getNextBatch(ConnectorPartitionHandle partitionHandle, Lifespan lifespan, int maxSize);
 
     void rewind(ConnectorPartitionHandle partitionHandle);

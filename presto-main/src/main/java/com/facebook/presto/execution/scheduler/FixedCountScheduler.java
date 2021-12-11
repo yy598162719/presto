@@ -32,8 +32,9 @@ public class FixedCountScheduler
     {
         Optional<RemoteTask> scheduleTask(InternalNode node, int partition);
     }
-
+    // taskScheduler就是我们上面已经介绍过的SqlStageExecution::scheduleTask()方法。
     private final TaskScheduler taskScheduler;
+    // Task将调度到下面的节点上（Presto Worker Node），每个节点对应一个Task
     private final List<InternalNode> partitionToNode;
 
     public FixedCountScheduler(SqlStageExecution stage, List<InternalNode> partitionToNode)

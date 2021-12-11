@@ -190,6 +190,7 @@ public class LogicalPlanner
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             // 用预定义的几百个优化器迭代优化之前生成的PlanNode树
+            // PlanOptimizer是优化器实现的接口
             for (PlanOptimizer optimizer : planOptimizers) {
                 // 第五步：【Coordinator】优化执行计划，生成Optimized Logical Plan
                 root = optimizer.optimize(root, session, variableAllocator.getTypes(), variableAllocator, idAllocator, warningCollector);

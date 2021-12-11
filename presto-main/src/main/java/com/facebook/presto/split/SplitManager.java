@@ -68,6 +68,9 @@ public class SplitManager
     {
         splitManagers.remove(connectorId);
     }
+    public SplitSource getSplits1(){
+        return null;
+    }
 
     public SplitSource getSplits(Session session, TableHandle table, SplitSchedulingStrategy splitSchedulingStrategy, WarningCollector warningCollector)
     {

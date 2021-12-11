@@ -61,6 +61,7 @@ public class QueryPreparer
     public PreparedQuery prepareQuery(Session session, String query, WarningCollector warningCollector)
             throws ParsingException, PrestoException, SemanticException
     {
+        // 将query封装成statement对象
         Statement wrappedStatement = sqlParser.createStatement(query, createParsingOptions(session, warningCollector));
         if (warningCollector.hasWarnings() && getWarningHandlingLevel(session) == AS_ERROR) {
             throw new PrestoException(WARNING_AS_ERROR, format("Warning handling level set to AS_ERROR. Warnings: %n %s",

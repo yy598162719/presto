@@ -43,6 +43,7 @@ import com.facebook.presto.spi.resourceGroups.QueryType;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.facebook.presto.split.CloseableSplitSourceProvider;
 import com.facebook.presto.split.SplitManager;
+import com.facebook.presto.split.SplitSourceProvider;
 import com.facebook.presto.sql.analyzer.Analysis;
 import com.facebook.presto.sql.analyzer.Analyzer;
 import com.facebook.presto.sql.analyzer.QueryExplainer;
@@ -369,9 +370,11 @@ public class SqlQueryExecution
                 metadata.beginQuery(getSession(), plan.getConnectors());
 
                 // plan distribution of query
-                // 生成数据源Connector的Connector，创建SqlStageExecution（Stage）、指定StageScheduler
+                // 生成数据源Connector的Connector，创建SqlStageExecution（Stage）、指定StageScheduler。重点
                 planDistribution(plan);
-
+                // 看到这里可以查看ConnectorSplit类的切片信息
+                // 这一步只是生成数据源的Split，但是既不会把Split安排到某个Presto Worker上，也不会去真正的使用Split读取Connector的数据.
+                // 感兴趣可以看 SplitManager::getSplits() 与 ConnectorSplitManager::getSplit() 的源码
                 // transition to starting
                 if (!stateMachine.transitionToStarting()) {
                     // query already started or finished
@@ -380,7 +383,7 @@ public class SqlQueryExecution
 
                 // if query is not finished, start the scheduler, otherwise cancel it
                 SqlQuerySchedulerInterface scheduler = queryScheduler.get();
-                // Stage的调度，根据执行计划，将Task调度到Presto Worker上
+                // Stage的调度，根据执行计划，将Task调度到Presto Worker上 重点
                 if (!stateMachine.isDone()) {
                     scheduler.start();
                 }
@@ -470,7 +473,9 @@ public class SqlQueryExecution
         variableAllocator.set(new PlanVariableAllocator(plan.getTypes().allVariables()));
         SubPlan fragmentedPlan = getSession().getRuntimeStats().profileNanos(
                 FRAGMENT_PLAN_TIME_NANOS,
-                // 第六步：【Coordinator】为逻辑执行计划分段(Fragment)[也被称之为划分Stage]
+                // 第六步：【Coordinator】为逻辑执行计划分段(Fragment)[也被称之为划分Stage，它们之间是一一对应的] 重点
+                // StageExecution负责生成的Task在任务调度时，会被分发到Presto Worker上执行。这些Task执行的是什么逻辑？这个就是由Task所属的StageExecution对应PlanFragment中的执行计划(PlanNode树）决定的。
+                // 至此，第四步到第六步所做的工作，它们都被包装在SqlQueryExecution::doAnalyzeQuery()中，回到上层的planDistribution方法
                 () -> planFragmenter.createSubPlans(stateMachine.getSession(), plan, false, idAllocator, variableAllocator.get(), stateMachine.getWarningCollector()));
 
         // record analysis time
@@ -496,9 +501,19 @@ public class SqlQueryExecution
         return connectors.build();
     }
 
+    /**
+     * planDistribution()的主要逻辑就两个：
+     *一个是从数据源Connector中获取到所有的Split。Split是什么呢？你可以理解为它是你要从数据源获取的数据分片，这是Presto中分块组织数据的方式
+     * ，Presto Connector会将待处理的所有数据划分为若干分片让Presto读取，而这些分片也会被安排到（assign）到多个Presto Worker上来处理以实现分布式高性能计算。
+     *
+     *另一是createSqlQueryScheduler()会为执行计划的每一个PlanFragment创建一个SqlStageExecution。每个SqlStageExecution（Stage）对应一个StageScheduler
+     * ，不同分区类型(PartitioningHandle)的Stage PlanFragment对应不同类型的StageScheduler，后面在调度Stage时，主要依赖的是这个StageScheduler的实现。
+     * @param plan
+     */
     private void planDistribution(PlanRoot plan)
     {
-        CloseableSplitSourceProvider splitSourceProvider = new CloseableSplitSourceProvider(splitManager::getSplits);
+        SplitSourceProvider delegate=splitManager::getSplits;
+        CloseableSplitSourceProvider splitSourceProvider = new CloseableSplitSourceProvider(delegate);
 
         // ensure split sources are closed
         stateMachine.addStateChangeListener(state -> {
@@ -517,6 +532,7 @@ public class SqlQueryExecution
         // record output field
         stateMachine.setColumns(((OutputNode) outputStagePlan.getFragment().getRoot()).getColumnNames(), outputStagePlan.getFragment().getTypes());
 
+        // 创建最后一个Stage的OutputBuffer（代码叫Root，因为最后一个Stage其实就是在执行计划树的树根），这个OutputBuffer用于给Presto SQL客户端输出Query的最终计算结果。
         PartitioningHandle partitioningHandle = outputStagePlan.getFragment().getPartitioningScheme().getPartitioning().getHandle();
         OutputBuffers rootOutputBuffers;
         if (isSpoolingOutputBufferEnabled(getSession())) {
@@ -529,6 +545,9 @@ public class SqlQueryExecution
         }
 
         SplitSourceFactory splitSourceFactory = new SplitSourceFactory(splitSourceProvider, stateMachine.getWarningCollector());
+        // 创建SqlStageExecution（俗称Stage），被包装在SqlQueryScheduler里面返回，我们在前面说过，Stage与PlanFragment是一一对应的
+        // 。这里只是创建Stage，但是不会去调度执行它，这个动作在后面。
+        // 创建完SqlStageExecution后，会被包装在新创建的SqlQueryScheduler对象中返回，紧接着就是去调度Stage、创建Task，分发到Presto集群的Worker上去执行
         // build the stage execution objects (this doesn't schedule execution)
         SqlQuerySchedulerInterface scheduler = isUseLegacyScheduler(getSession()) ?
                 LegacySqlQueryScheduler.createSqlQueryScheduler(

@@ -157,6 +157,7 @@ public class DispatchManager
         DispatchQueryCreationFuture queryCreationFuture = new DispatchQueryCreationFuture();
         boundedQueryExecutor.execute(() -> {
             try {
+                // 重要方法入口
                 createQueryInternal(queryId, slug, retryCount, sessionContext, query, resourceGroupManager);
             }
             finally {
@@ -210,6 +211,8 @@ public class DispatchManager
             transactionManager.activateTransaction(session, isTransactionControlStatement(preparedQuery.getStatement()), accessControl);
 
             // 第五步：生成DispatchQuery 也就是第三步：【Coordinator】创建QueryExecution并提交给ResourceGroupManager运行
+            // 对于Create Table这样的SQL，生成的是DataDefinitionExecution；
+            // 根据Statement的类型，生成QueryExecution
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,
                     query,

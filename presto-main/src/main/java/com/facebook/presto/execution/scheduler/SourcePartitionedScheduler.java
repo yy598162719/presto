@@ -463,11 +463,8 @@ public class SourcePartitionedScheduler
             if (noMoreSplitsNotification.containsKey(node)) {
                 noMoreSplits.putAll(partitionedNode, noMoreSplitsNotification.get(node));
             }
-
-            newTasks.addAll(stage.scheduleSplits(
-                    node,
-                    splits,
-                    noMoreSplits.build()));
+            Set<RemoteTask> remoteTasks = stage.scheduleSplits(node, splits, noMoreSplits.build());
+            newTasks.addAll(remoteTasks);
         }
         return newTasks.build();
     }

@@ -126,10 +126,12 @@ public class SqlParser
     {
         return (Return) invokeParser("return", routineBody, SqlBaseParser::standaloneRoutineBody, parsingOptions);
     }
-
+    // 进入解析成ast树部分
     private Node invokeParser(String name, String sql, Function<SqlBaseParser, ParserRuleContext> parseFunction, ParsingOptions parsingOptions)
     {
         try {
+            // SqlBaseLexer和SqlBaseParser是通过antlr4生成的类
+            // CaseInsensitiveStream解决大小写不敏感问题
             SqlBaseLexer lexer = new SqlBaseLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
             CommonTokenStream tokenStream = new CommonTokenStream(lexer);
             SqlBaseParser parser = new SqlBaseParser(tokenStream);
@@ -151,12 +153,11 @@ public class SqlParser
                     }
                 }
             });
-
+            // 解析时的处理,一般是异常处理
             parser.addParseListener(new PostProcessor(Arrays.asList(parser.getRuleNames()), parsingOptions.getWarningConsumer()));
-
+            // 重写错误发生时的处理
             lexer.removeErrorListeners();
             lexer.addErrorListener(LEXER_ERROR_LISTENER);
-
             parser.removeErrorListeners();
 
             if (enhancedErrorHandlerEnabled) {
@@ -168,6 +169,7 @@ public class SqlParser
 
             ParserRuleContext tree;
             try {
+                // 这里涉及到ssl处理和ll处理的语法预测
                 // first, try parsing with potentially faster SLL mode
                 parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
                 tree = parseFunction.apply(parser);
@@ -180,7 +182,8 @@ public class SqlParser
                 parser.getInterpreter().setPredictionMode(PredictionMode.LL);
                 tree = parseFunction.apply(parser);
             }
-
+            // visit方法会根据不同的sql类型调用对应的visitXXX方法
+            // 比如insert对应Node visitInsertInfo
             return new AstBuilder(parsingOptions).visit(tree);
         }
         catch (StackOverflowError e) {

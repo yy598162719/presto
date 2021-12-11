@@ -15,6 +15,11 @@ package com.facebook.presto.execution.scheduler;
 
 import java.util.Collection;
 
+/**
+ * 多个stage谁先生成task的问题，在Presto中由ExecutionPolicy接口决定,这里有两个实现
+ * 具体使用哪种顺序是由execution_policy的配置决定的
+ * 默认是AllAtOnceExecutionPolicy会按照Stage执行的上下游关系依次调度Stage
+ */
 public interface ExecutionPolicy
 {
     ExecutionSchedule createExecutionSchedule(Collection<StageExecutionAndScheduler> stages);

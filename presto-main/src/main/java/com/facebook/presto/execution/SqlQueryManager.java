@@ -262,7 +262,7 @@ public class SqlQueryManager
         });
 
         stats.trackQueryStats(queryExecution);
-
+        // 在这里根据create还是query或者delete来区分DataDefinitionExecution还是SqlQueryExecution
         embedVersion.embedVersion(queryExecution::start).run();
     }
 

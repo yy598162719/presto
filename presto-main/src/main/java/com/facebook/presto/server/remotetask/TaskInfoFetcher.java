@@ -66,6 +66,9 @@ import static io.airlift.units.Duration.nanosSince;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+/**
+ * 是获取TaskInfo的，这个接口非常的重，涉及到巨大的json解析，所以presto中对于这个接口每100毫秒调用一次
+ */
 public class TaskInfoFetcher
         implements SimpleHttpResponseCallback<TaskInfo>
 {
