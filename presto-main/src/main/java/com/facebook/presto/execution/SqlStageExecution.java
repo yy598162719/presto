@@ -81,6 +81,9 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @ThreadSafe
+/**
+ * 重点对象
+ */
 public final class SqlStageExecution
 {
     public static final Set<ErrorCode> RECOVERABLE_ERROR_CODES = ImmutableSet.of(
@@ -94,6 +97,7 @@ public final class SqlStageExecution
     private final StageExecutionStateMachine stateMachine;
     private final PlanFragment planFragment;
     private final RemoteTaskFactory remoteTaskFactory;
+    // 存储presto节点信息
     private final NodeTaskMap nodeTaskMap;
     private final boolean summarizeTaskInfo;
     private final Executor executor;
@@ -494,6 +498,13 @@ public final class SqlStageExecution
         return newTasks.build();
     }
 
+    /**
+     * 重点 执行调度的入口
+     * @param node
+     * @param taskId
+     * @param sourceSplits
+     * @return
+     */
     private synchronized RemoteTask scheduleTask(InternalNode node, TaskId taskId, Multimap<PlanNodeId, Split> sourceSplits)
     {
         checkArgument(!allTasks.contains(taskId), "A task with id %s already exists", taskId);

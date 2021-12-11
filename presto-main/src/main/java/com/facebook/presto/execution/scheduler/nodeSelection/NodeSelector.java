@@ -23,6 +23,9 @@ import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 重点 将task分配给node的具体实现所在
+ */
 public interface NodeSelector
 {
     void lockDownNodes();

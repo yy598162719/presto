@@ -150,6 +150,9 @@ import java.util.Set;
 import static com.facebook.presto.sql.planner.ConnectorPlanOptimizerManager.PlanPhase.LOGICAL;
 import static com.facebook.presto.sql.planner.ConnectorPlanOptimizerManager.PlanPhase.PHYSICAL;
 
+/**
+ * 封装了所有优化器
+ */
 public class PlanOptimizers
 {
     private final List<PlanOptimizer> planningTimeOptimizers;

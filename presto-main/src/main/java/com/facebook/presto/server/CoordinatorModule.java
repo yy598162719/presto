@@ -191,7 +191,7 @@ import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.weakref.jmx.ObjectNames.generatedNameOf;
 import static org.weakref.jmx.guice.ExportBinder.newExporter;
-
+// 重点
 public class CoordinatorModule
         extends AbstractConfigurationAwareModule
 {
